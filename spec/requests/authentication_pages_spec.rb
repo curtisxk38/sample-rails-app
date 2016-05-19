@@ -2,12 +2,20 @@ require 'spec_helper'
 
 describe "AuthenticationPages" do
     subject { page }
+    describe "not signed in" do
+        it { should_not have_link("Profile") }
+        it { should_not have_link("settings") }
+    end
+    
     describe "signin page" do
         before { visit signin_path }
         
         it { should have_content('Sign in') }
         it { should have_title('Sign in') }
+
     end
+    
+    
     
     describe "signing in" do
         before { visit signin_path }
@@ -25,11 +33,8 @@ describe "AuthenticationPages" do
         
         describe "valid sign in" do
             let(:user) { FactoryGirl.create(:user) }
-            before do
-                fill_in "Email", with: user.email.upcase
-                fill_in "Password", with: user.password
-                click_button 'Sign in'
-            end
+            before { sign_in(user) }
+            
             it { should have_title(user.name) }
             it { should have_link('Users',       href: users_path) }
             it { should have_link('Profile',     href: user_path(user)) }
@@ -56,20 +61,6 @@ describe "AuthenticationPages" do
         describe "for non signed in users" do
             let(:user) { FactoryGirl.create(:user) }
             
-            describe "when attempting to visit a protected page" do
-                before do
-                    visit edit_user_path(user)
-                    fill_in "Email", with: user.email
-                    fill_in "Password", with: user.password
-                    click_button "Sign in"
-                end
-                
-                describe "after signing in" do
-                    it "should render the desired protected page" do
-                        expect(page).to have_title("Edit user")
-                    end
-                end
-            end
             describe "in the Users controller" do
                 describe "visiting the edit page" do
                     before { visit edit_user_path(user) }
@@ -82,6 +73,28 @@ describe "AuthenticationPages" do
                 describe "visiting the user index" do
                     before { visit users_path }
                     it { should have_title('Sign in') }
+                end
+            end
+            describe "when attempting to visit a protected page" do
+                before do
+                    visit edit_user_path(user)
+                    sign_in(user)
+                end
+                
+                describe "after signing in" do
+                    it "should render the desired protected page" do
+                        expect(page).to have_title("Edit user")
+                    end
+                    
+                    describe "when signing in again" do
+                        before do
+                            click_link "Sign out"
+                            sign_in(user)
+                        end
+                        it "should render the default (profile) page" do
+                            expect(page).to have_title(user.name)
+                        end
+                    end
                 end
             end
         end
@@ -101,6 +114,16 @@ describe "AuthenticationPages" do
             describe "submitting a PATCH request to the Users#update action" do
                 before { patch user_path(wrong_user) }
                 specify { expect(response).to redirect_to(root_url) }
+            end
+        end
+        
+        describe "as admin user" do
+            let(:admin) { FactoryGirl.create(:admin) }
+            before { sign_in admin, no_capybara: true }
+            describe "should not be able to delete themselves with #destroy action" do
+                specify do
+                    expect { delete user_path(admin) }.not_to change(User, :count).by(-1)
+                end
             end
         end
     end       
