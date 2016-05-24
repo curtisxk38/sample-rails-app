@@ -2,7 +2,10 @@ updateCountdown = ->
     remaining = 140 - jQuery("#micropost_content").val().length
     if remaining < 0
         remaining = 0
-    jQuery(".countdown").text remaining + " characters remaining"
+    plural = "s"
+    if remaining == 1
+        plural = ""
+    jQuery(".countdown").text remaining + " character" + plural + " remaining"
 
 jQuery ->
     updateCountdown()
